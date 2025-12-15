@@ -3,9 +3,8 @@ import pandas as pd
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 
-# =============================
 # CONFIG
-# =============================
+
 REGION = "ap-south-1"
 LAST_7_DAYS = datetime.now(timezone.utc) - timedelta(days=7)
 
@@ -19,9 +18,7 @@ sts = session.client("sts")
 
 ACCOUNT_ID = sts.get_caller_identity()["Account"]
 
-# =============================
 # EC2 INSTANCES (ID + NAME)
-# =============================
 instances = {}
 
 paginator = ec2.get_paginator("describe_instances")
@@ -46,9 +43,7 @@ print(f"Discovered EC2 instances: {len(instances)}")
 if not instances:
     raise RuntimeError("No EC2 instances found. Check region or AWS profile.")
 
-# =============================
 # BACKUP CHECK (AWS Backup)
-# =============================
 protected_instances = set()
 
 paginator = backup.get_paginator("list_protected_resources")
@@ -58,9 +53,7 @@ for page in paginator.paginate():
             instance_id = r["ResourceArn"].split("/")[-1]
             protected_instances.add(instance_id)
 
-# =============================
 # CLOUDWATCH ALARMS
-# =============================
 alarm_map = defaultdict(list)
 alarm_triggered_last_week = defaultdict(bool)
 
@@ -85,11 +78,7 @@ for page in paginator.paginate():
         ):
             alarm_triggered_last_week[instance_id] = True
 
-# =============================
-# INSPECTOR FINDINGS (CORRECT)
-# =============================
-# This matches Inspector Console -> Findings -> By instance
-
+# INSPECTOR FINDINGS
 cve_data = defaultdict(lambda: {"Critical": 0, "High": 0, "All": 0})
 
 for instance_id in instances.keys():
@@ -118,9 +107,7 @@ for instance_id in instances.keys():
             elif severity == "HIGH":
                 cve_data[instance_id]["High"] += 1
 
-# =============================
 # FINAL REPORT
-# =============================
 rows = []
 
 for instance_id, inst in instances.items():
@@ -145,6 +132,6 @@ for instance_id, inst in instances.items():
     rows.append(row)
 
 df = pd.DataFrame(rows)
-df.to_csv("weekly_ec2_security_report.csv", index=False)
+df.to_csv("weekly_security_report.csv", index=False)
 
-print("Report generated: weekly_ec2_security_report.csv")
+print("Report generated: weekly_security_report.csv")
